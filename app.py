@@ -7,7 +7,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'cyber_cloud_key_2026')
 
 # بيانات الدخول المعينة للدكتور
 USER_CREDENTIALS = {
-    'DrKarim': 'cloud2026'
+    'admin': 'cloud2026'
 }
 
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -52,7 +52,7 @@ LOGIN_TEMPLATE = """
 </html>
 """
 
-# قالب لوحة التحكم الحديث الشامل
+# قالب لوحة التحكم الحديث الشامل مع خاصية الحذف
 DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -131,7 +131,10 @@ DASHBOARD_TEMPLATE = """
         .img-card img { width: 100%; height: 100%; object-fit: cover; }
 
         .img-info { padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .actions { display: flex; gap: 8px; align-items: center; }
         .badge-view { font-size: 11px; background: rgba(56, 189, 248, 0.15); color: var(--primary); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+        .badge-delete { font-size: 11px; background: rgba(239, 68, 68, 0.15); color: #f87171; padding: 5px 10px; border-radius: 6px; text-decoration: none; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; }
+        .badge-delete:hover { background: #ef4444; color: white; }
 
         /* Modal */
         .modal {
@@ -151,120 +154,4 @@ DASHBOARD_TEMPLATE = """
             <h2>🛡️ Cloud Storage Platform</h2>
             <div class="user-info">
                 <span>المستخدم الحالي: <b>{{ username }}</b></span>
-                <a href="{{ url_for('logout') }}" class="btn-logout">تسجيل خروج</a>
-            </div>
-        </div>
-
-        <div class="upload-card">
-            <h3>رفع ملف أو صورة جديدة</h3>
-            <p>قم باختيار صورة من جهازك لتخزينها فوراً على السيرفر السحابي</p>
-            <form method="POST" action="/upload" enctype="multipart/form-data">
-                <input type="file" name="file" id="file" required style="display:none;" onchange="document.getElementById('fileName').innerText = 'الملف المحدد: ' + this.files[0].name">
-                <label class="upload-btn-wrapper" for="file">
-                    <span style="font-size: 28px; display: block; margin-bottom: 8px;">📁</span>
-                    <span style="color: var(--primary); font-weight: 600;">انقر لاختيار ملف من حاسوبك</span>
-                    <p id="fileName" style="font-size: 12px; color: var(--text-muted); margin: 8px 0 0 0;"></p>
-                </label>
-                <br>
-                <button type="submit" class="submit-btn">رفع الملف إلى السحابة</button>
-            </form>
-        </div>
-
-        <div style="margin-bottom:20px;">📂 الصور والمستندات المخزنة في الكلاود:</div>
-        <div class="gallery">
-            {% for image in images %}
-            <div class="img-card">
-                <div class="img-container" onclick="openModal('{{ url_for('uploaded_file', filename=image) }}')">
-                    <img src="{{ url_for('uploaded_file', filename=image) }}" alt="Cloud Image">
-                </div>
-                <div class="img-info">
-                    <span style="font-size:12px; color:#94a3b8; overflow:hidden; text-overflow:ellipsis; max-width:140px; white-space:nowrap;">{{ image }}</span>
-                    <span class="badge-view" onclick="openModal('{{ url_for('uploaded_file', filename=image) }}')">عرض وتكبير</span>
-                </div>
-            </div>
-            {% else %}
-            <p style="color: #64748b;">السحابة فارغة حالياً. قم برفع أول صورة!</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div id="imageModal" class="modal">
-        <div class="modal-controls">
-            <button class="modal-btn" onclick="zoomIn()">🔍+ تكبير</button>
-            <button class="modal-btn" onclick="zoomOut()">🔍- تصغير</button>
-            <button class="modal-btn" onclick="resetZoom()">🔄 الحجم الأصلي</button>
-            <button class="modal-btn close-btn" onclick="closeModal()">✖ إغلاق</button>
-        </div>
-        <div class="modal-img-wrapper">
-            <img id="modalImg" class="modal-content" src="" alt="Zoomable Image">
-        </div>
-    </div>
-
-    <script>
-        let currentScale = 1;
-        function openModal(imgUrl) {
-            document.getElementById('imageModal').style.display = 'flex';
-            document.getElementById('modalImg').src = imgUrl;
-            resetZoom();
-        }
-        function closeModal() { document.getElementById('imageModal').style.display = 'none'; }
-        function zoomIn() { currentScale += 0.25; applyZoom(); }
-        function zoomOut() { if(currentScale > 0.5) { currentScale -= 0.25; applyZoom(); } }
-        function resetZoom() { currentScale = 1; applyZoom(); }
-        function applyZoom() { document.getElementById('modalImg').style.transform = `scale(${currentScale})`; }
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
-    </script>
-</body>
-</html>
-"""
-
-@app.route('/', methods=['GET', 'POST'])
-def login():
-    if 'user' in session:
-        return redirect(url_for('dashboard'))
-    
-    error = None
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
-            session['user'] = username
-            return redirect(url_for('dashboard'))
-        else:
-            error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
-            
-    return render_template_string(LOGIN_TEMPLATE, error=error)
-
-@app.route('/dashboard')
-def dashboard():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    
-    images = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if allowed_file(f)]
-    return render_template_string(DASHBOARD_TEMPLATE, username=session['user'], images=images)
-
-@app.route('/upload', methods=['POST'])
-def upload():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-        
-    if 'file' in request.files:
-        file = request.files['file']
-        if file and file.filename != '' and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            
-    return redirect(url_for('dashboard'))
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+                <a href="{{ url_for('logout') }}" class="btn-logout">
