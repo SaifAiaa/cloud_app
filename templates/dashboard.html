@@ -95,8 +95,6 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             text-align: center;
             margin-bottom: 40px;
-            position: relative;
-            overflow: hidden;
         }
 
         .upload-card h3 {
@@ -152,9 +150,6 @@
             font-size: 18px;
             margin-bottom: 20px;
             color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
         .gallery {
@@ -170,7 +165,7 @@
             overflow: hidden;
             border: 1px solid var(--border-color);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .img-card:hover {
@@ -184,7 +179,7 @@
             height: 170px;
             overflow: hidden;
             background: #000;
-            position: relative;
+            cursor: pointer;
         }
 
         .img-card img {
@@ -212,17 +207,19 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 170px;
+            max-width: 150px;
         }
 
         .badge-view {
             font-size: 11px;
             background: rgba(56, 189, 248, 0.1);
             color: var(--primary);
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 6px;
-            text-decoration: none;
+            cursor: pointer;
             font-weight: 600;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            transition: all 0.2s ease;
         }
 
         .badge-view:hover {
@@ -239,14 +236,83 @@
             border-radius: 14px;
             border: 1px dashed var(--border-color);
         }
+
+        /* نافذة العرض التفاعلية المكبرة (Modal) */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .modal-controls {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 1001;
+        }
+
+        .modal-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .modal-btn.close-btn {
+            background: rgba(239, 68, 68, 0.6);
+            border-color: rgba(239, 68, 68, 0.8);
+        }
+
+        .modal-btn.close-btn:hover {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        .modal-img-wrapper {
+            max-width: 90%;
+            max-height: 80vh;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 50px;
+        }
+
+        .modal-content {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            transition: transform 0.25s ease;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2>🛡️ Cloud Storage Platform</h2>
+            <h2>☁️ Cloud Storage Platform</h2>
             <div class="user-info">
-                <span>المستخدم: <b>{{ username }}</b></span>
+                <span>المستخدم الحالي: <b>{{ username if username else session.get('user', 'المسؤول') }}</b></span>
                 <a href="{{ url_for('logout') }}" class="btn-logout">تسجيل خروج</a>
             </div>
         </div>
@@ -270,14 +336,12 @@
         <div class="gallery">
             {% for image in images %}
             <div class="img-card">
-                <div class="img-container">
-                    <a href="{{ url_for('uploaded_file', filename=image) }}" target="_blank">
-                        <img src="{{ url_for('uploaded_file', filename=image) }}" alt="Cloud Image" title="انقر لعرض الصورة بالحجم الكامل">
-                    </a>
+                <div class="img-container" onclick="openModal('{{ url_for('uploaded_file', filename=image) }}')">
+                    <img src="{{ url_for('uploaded_file', filename=image) }}" alt="Cloud Image" title="انقر للتكبير والتصغير">
                 </div>
                 <div class="img-info">
                     <span class="title" title="{{ image }}">{{ image }}</span>
-                    <a href="{{ url_for('uploaded_file', filename=image) }}" target="_blank" class="badge-view">تكبير</a>
+                    <span class="badge-view" onclick="openModal('{{ url_for('uploaded_file', filename=image) }}')">عرض وتكبير</span>
                 </div>
             </div>
             {% else %}
@@ -287,5 +351,60 @@
             {% endfor %}
         </div>
     </div>
+
+    <!-- نافذة التكبير والتصغير المدمجة -->
+    <div id="imageModal" class="modal">
+        <div class="modal-controls">
+            <button class="modal-btn" onclick="zoomIn()">🔍+ تكبير</button>
+            <button class="modal-btn" onclick="zoomOut()">🔍- تصغير</button>
+            <button class="modal-btn" onclick="resetZoom()">🔄 الحجم الأصلي</button>
+            <button class="modal-btn close-btn" onclick="closeModal()">✖ إغلاق</button>
+        </div>
+        <div class="modal-img-wrapper">
+            <img id="modalImg" class="modal-content" src="" alt="Zoomable Image">
+        </div>
+    </div>
+
+    <script>
+        let currentScale = 1;
+
+        function openModal(imgUrl) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImg');
+            modal.style.display = 'flex';
+            modalImg.src = imgUrl;
+            resetZoom();
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        function zoomIn() {
+            currentScale += 0.25;
+            applyZoom();
+        }
+
+        function zoomOut() {
+            if (currentScale > 0.5) {
+                currentScale -= 0.25;
+                applyZoom();
+            }
+        }
+
+        function resetZoom() {
+            currentScale = 1;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            document.getElementById('modalImg').style.transform = `scale(${currentScale})`;
+        }
+
+        // إغلاق النافذة بضغط مفتاح Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
 </body>
 </html>
