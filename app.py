@@ -8,7 +8,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'cyber_security_cloud_key_2026')
 
 # بيانات الدخول المعينة للدكتور (يمكنك تغييرها هنا)
 USER_CREDENTIALS = {
-    'admin': 'cloud2026'  # اسم المستخدم: admin | كلمة المرور: cloud2026
+    'DrKarim': 'Cloud@2026'  # اسم المستخدم: DrKarim | كلمة المرور: cloud@2026
 }
 
 # مجلد التخزين السحابي للصور المرفوعة
