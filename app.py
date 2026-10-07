@@ -7,7 +7,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'cyber_cloud_key_2026')
 
 # بيانات الدخول المعينة للدكتور
 USER_CREDENTIALS = {
-    'admin': 'cloud2026'
+    'DrKarim': 'cloud2026'
 }
 
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
